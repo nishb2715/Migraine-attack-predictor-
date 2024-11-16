@@ -1,0 +1,146 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.preprocessing import LabelEncoder
+from geopy.distance import geodesic
+import joblib
+
+
+
+!pip install geocoder
+
+df = pd.read_excel('migraine_dataset.xlsx')
+
+print(df.head())
+
+print(df.info())
+
+print(df.describe())
+
+print(df.isnull())
+
+label_encoders = {}
+categorical_features = ['Weather','Type']
+for feature in categorical_features:
+    le = LabelEncoder()
+    df[feature] = le.fit_transform(df[feature])
+    label_encoders[feature] = le
+
+for column in df.columns:
+
+  median_value = df[column].median()
+  df[column].fillna(median_value,inplace=True)
+
+print(df)
+
+
+import geocoder
+
+g = geocoder.ip('me')
+
+if g.ok:
+    latitude = g.latlng[0]
+    longitude = g.latlng[1]
+
+    int_latitude = int(latitude)
+    int_longitude = int(longitude)
+
+    print(f"Real-time location (integer form): Latitude = {int_latitude}, Longitude = {int_longitude}")
+else:
+    print("Could not obtain real-time location.")
+
+plt.figure(figsize=(12,8))
+sns.heatmap(df.corr(), annot=True, cmap='coolwarm')
+plt.show()
+
+
+X = df.drop(['Triggered_In'], axis=1)
+y = df['Triggered_In']
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=14)
+
+model = RandomForestClassifier(n_estimators=100, random_state=14)  #14
+model.fit(X_train, y_train)
+
+joblib.dump(model, 'migraine_trigger_model.pkl')
+
+y_pred = model.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+print("Accuracy:", accuracy)
+print("Classification Report:")
+print(classification_report(y_test, y_pred))
+
+from sklearn.ensemble import RandomForestRegressor
+import pandas as pd
+import joblib
+
+
+X = df.drop(['Triggered_In'], axis=1)
+y = df['Triggered_In']
+
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+
+model = RandomForestRegressor(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+
+
+joblib.dump(model, 'migraine_trigger_regression_model.pkl')
+
+
+new_data = pd.DataFrame({
+    'Patient_id': [1],
+    'Diet': [1],
+    'Sleep Duration': [5],
+    'Vomit': [0],
+    'Frequency': [8],
+    'Intensity': [3],
+    'Visual': [1],
+    'Location': [0],
+    'Weather': [2],
+    'Air-Q':[14],
+    'Type': [1],
+
+
+
+})
+
+
+loaded_model = joblib.load('migraine_trigger_regression_model.pkl')
+
+
+predicted_time_hours = loaded_model.predict(new_data)[0]
+
+
+predicted_time_minutes = predicted_time_hours * 60
+predicted_hours = int(predicted_time_hours)
+predicted_minutes_only = int(predicted_time_minutes)
+predicted_hours_and_minutes = f"{predicted_hours} hours and {predicted_minutes_only % 60} minutes"
+
+print(f"Predicted time in hours: {predicted_time_hours:.2f} hours")
+print(f"Predicted time in minutes: {predicted_minutes_only} minutes")
+print(f"Predicted time in hours and minutes: {predicted_hours_and_minutes}")
+
+
+from sklearn.metrics import f1_score
+from sklearn.ensemble import RandomForestClassifier
+import numpy as np
+
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+
+y_pred = model.predict(X_test)
+
+threshold = 3
+y_pred_binary = np.where(y_pred < threshold, 1, 0)
+y_test_binary = np.where(y_test < threshold, 1, 0)
+
+f1 = f1_score(y_test_binary, y_pred_binary)
+print(f"F1 Score: {f1:.2f}")
